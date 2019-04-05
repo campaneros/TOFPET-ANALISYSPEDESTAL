@@ -45,7 +45,7 @@ int main(){
   gSystem->Exec(("mkdir "+DirData+"/Plot/PlotSigma").c_str());
  gSystem->Exec(("mkdir "+DirData+"/PlotSigma").c_str());
   gSystem->Exec(("mkdir "+DirData+"/PlotSigma/PlotTimeTemp").c_str());
- gSystem->Exec(("mkdir "+DirData+"/PlotMean").c_str());
+ gSystem->Exec(("mkdir "+DirData+"/PlotDiffMean").c_str());
  gSystem->Exec(("mkdir "+DirData+"/PlotEntr").c_str());
     
     
@@ -109,13 +109,13 @@ int main(){
     
     TGraph *t[Nch];
     TGraph *t2[Nch];
-    TGraph *s[Nch];
+    TGraph *sigmafit[Nch];
     TGraph *stmp[Nch] ;
-    TGraph *g[Nch] ;
+    TGraph *g[Nch];
     TGraph *gt[Nch] ;
     TGraph *entries[Nch];
     TGraph *fits[Nch] ;
-    TGraph *fitstmp[Nch] ;
+    TGraph *fitsdiff[Nch] ;
     TGraphErrors *meant[Nch];
     TGraphErrors *meantemp[Nch];
     
@@ -125,6 +125,11 @@ int main(){
 	TCanvas* canvTimeCH = new TCanvas("ChVsTime","ChVsTime",1200,600);
 	canvTimeCH->Divide(2,1);
 	TCanvas* BrokenCH = new TCanvas("Broken","Broken",1200,600);
+	TCanvas* canvMeanfit = new TCanvas("Meanfit","Meanfit",1200,600);
+	canvMeanfit->Divide(2,1);
+	TCanvas* canvDiffMean = new TCanvas("DiffMfit","DiffMfit",1200,600);
+	//canvDiffMean->Divide(2,1);
+	TCanvas* canvSigma = new TCanvas("sigmafit","sigmafit",1200,600);
 	//canvTimeCH->Divide(2,1);
        TCanvas* canvEntries[Nch];//= new TCanvas("Nentries", "Nentries", 1200,600);
 
@@ -156,8 +161,11 @@ int main(){
         g[k] = new TGraph(size);
 	t[k] = new TGraph;
 	t2[k] = new TGraph;
+	sigmafit[k]= new TGraph;
+	fits[k]= new TGraph;
+	fitsdiff[k]= new TGraph;
 	entries[k] = new TGraph;
-	 canvEntries[k]= new TCanvas(("EntriechNum"+to_string(k)).c_str(), ("EntriechNum"+to_string(k)).c_str(), 1200,600);
+	canvEntries[k]= new TCanvas(("EntriechNum"+to_string(k)).c_str(), ("EntriechNum"+to_string(k)).c_str(), 1200,600);
 
         
     }
@@ -193,15 +201,19 @@ int main(){
                 MeanValue[i][k]= (MeanValuePre[k]+MeanValueAfter[k])/2;
                 MeanTemp[i][k]= (MeanTempPre[k]+MeanTempAfter[k])/2;
 		MeanFit[i][k]= (MeanFitPre[k]+MeanFitAfter[k])/2;
-		sigma[i][k]= sqrt(sigmaPre[k]);
+		sigma[i][k]= (sigmaPre[k]+sigmaAfter[k])/2;
 		
 		//sigma[i][k]= sigmaPre[k];
             }
             
             
-            if(MeanValue[i][k]!=0){
+            if((Nentr[i][k]+Nentr[i+1][k])/2>99){
                 g[k]-> SetPoint (i , MeanTemp[i][k] , MeanValue[i][k]);
 		t[k]-> SetPoint (i, time1, k);
+		fits[k]-> SetPoint(i, MeanTemp[i][k], MeanFit[i][k]);
+		MeanFit[i][k]= (MeanFitPre[k]-MeanFitAfter[k]);
+		fitsdiff[k]->SetPoint(i, MeanTemp[i][k], MeanFit[i][k]);
+		sigmafit[k]->SetPoint(i, MeanTemp[i][k], sigma[i][k]);
             }else if ( (k<64 )|| (k>255&&k<320)){
  		t2[k]-> SetPoint (i, time1, k);
 			}
@@ -310,20 +322,13 @@ int main(){
     canvTempMean->SaveAs((DirData+"/Plot/PlotEnergy/MeanVsTemp.png").c_str());
 
 
-    for(int k=0; k<Nch;k++){
-	if((k<64)||(k>255&&k<320)){
-	entries[k]->SetMarkerStyle(7);
-	entries[k]->SetMarkerColor(kRed);
-	entries[k]->Draw("AP");
-	canvEntries[k]->SaveAs((DirData+"/PlotEntr/EntriechNum"+to_string(k)+".png").c_str());
-		}
-	}
+    
 
 
 for(int k=0; k<Nch;k++){
 	
     if(k<64){
-        //canvTimeCH->cd(1)->SetGrid();
+        canvTimeCH->cd(1)->SetGrid();
         canvTimeCH->cd(1);
         
         t[k]->SetMaximum(65);
@@ -345,7 +350,7 @@ for(int k=0; k<Nch;k++){
     } else if(k>255&&k<320){
 
 
-       // canvTimeCH->cd(2)->SetGrid();
+       canvTimeCH->cd(2)->SetGrid();
         canvTimeCH->cd(2);
         t[k]->SetMaximum(321);
         t[k]->SetMinimum(255);
@@ -372,6 +377,108 @@ canvTimeCH->SaveAs((DirData+"/Plot/PlotEnergy/chVstime.png").c_str());
 
 
 
+for(int k=0; k<Nch;k++){
+	
+    if(k<64){
+        canvMeanfit->cd(1)->SetGrid();
+        canvMeanfit->cd(1);
+        
+        fits[k]->SetMaximum(280);
+        fits[k]->SetMinimum(130);
+        fits[k]->SetTitle("Allch");
+        fits[k]->GetXaxis()->SetTitle("temperature [#circC]");
+        fits[k]->GetYaxis()->SetTitle("Meanfit");
+        fits[k]->GetXaxis()->SetLimits(24,37);
+        fits[k]->SetMarkerStyle(7);
+        fits[k]->SetMarkerColor(kBlack);
+	if(k==0){
+        fits[k]->Draw("AP");
+		}else {fits[k]->Draw("SAMEP");
+			}
+    } else if(k>255&&k<320){
+
+
+        canvMeanfit->cd(2)->SetGrid();
+        canvMeanfit->cd(2);
+        fits[k]->SetMaximum(240);
+        fits[k]->SetMinimum(100);
+        fits[k]->SetTitle("Allch");
+        fits[k]->GetXaxis()->SetLimits(24,37);
+        fits[k]->GetXaxis()->SetTitle("temperature [#circC]");
+        fits[k]->GetYaxis()->SetTitle("MeanFit");
+        fits[k]->SetMarkerStyle(7);
+        fits[k]->SetMarkerColor(kBlack);
+	if(k==256){
+        fits[k]->Draw("AP");
+		}else {fits[k]->Draw("SAMEP");
+			}
+        
+        }
+      
+      }//chiudo for*/
+canvMeanfit->SaveAs((DirData+"/Plot/PlotEnergy/MeanfitVsTemp.png").c_str());
+
+
+
+
+for(int k=0; k<Nch;k++){
+	
+    if((k<64)||(k>255&&k<320)){
+        canvDiffMean->cd()->SetGrid();
+        canvDiffMean->cd();
+        
+        //fitsdiff[k]->SetMaximum(280);
+        //fitsdiff[k]->SetMinimum(130);
+        fitsdiff[k]->SetTitle(("Ch"+to_string(k)).c_str());
+        fitsdiff[k]->GetXaxis()->SetTitle("temperature [#circC]");
+        fitsdiff[k]->GetYaxis()->SetTitle("diffMean");
+        fitsdiff[k]->GetXaxis()->SetLimits(24,37);
+        fitsdiff[k]->SetMarkerStyle(7);
+        fitsdiff[k]->SetMarkerColor(kBlack);
+        fitsdiff[k]->Draw("AP");	
+        canvDiffMean->SaveAs((DirData+"/PlotDiffMean/DiffMeanfitVsTemp"+to_string(k)+".png").c_str());
+        }
+      
+      }//chiudo for*/
+
+
+for(int k=0; k<Nch;k++){
+	
+    if((k<64)||(k>255&&k<320)){
+        canvSigma->cd()->SetGrid();
+        canvSigma->cd();
+        
+        //sigmafit[k]->SetMaximum(280);
+        //sigmafit[k]->SetMinimum(130);
+        sigmafit[k]->SetTitle(("Ch"+to_string(k)).c_str());
+        sigmafit[k]->GetXaxis()->SetTitle("temperature [#circC]");
+        sigmafit[k]->GetYaxis()->SetTitle("Sigma");
+        sigmafit[k]->GetXaxis()->SetLimits(24,37);
+        sigmafit[k]->SetMarkerStyle(7);
+        sigmafit[k]->SetMarkerColor(kBlack);
+        sigmafit[k]->Draw("AP");	
+        canvSigma->SaveAs((DirData+"/PlotSigma/SigmafitVsTemp"+to_string(k)+".png").c_str());
+        }
+      
+      }//chiudo for*/
+
+
+
+
+
+
+for(int k=0; k<Nch;k++){
+	if((k<64)||(k>255&&k<320)){
+        canvEntries[k]->cd();
+	canvEntries[k]->cd()->SetGrid();
+	entries[k]->SetMarkerStyle(7);
+	entries[k]->SetMarkerColor(kRed);
+	entries[k]->Draw("AP");
+	canvEntries[k]->SaveAs((DirData+"/PlotEntr/EntriechNum"+to_string(k)+".png").c_str());
+		}
+	}
+
+
 
 for(int k=0; k<Nch;k++){
 	
@@ -380,7 +487,7 @@ for(int k=0; k<Nch;k++){
 	}
 }
 
-BrokenCH->cd(0);
+BrokenCH->cd();
 ch->SetMinimum(10);
 ch->Draw("AP");
     BrokenCH->SaveAs((DirData+"/Plot/PlotEnergy/BrokenVstime.png").c_str());
